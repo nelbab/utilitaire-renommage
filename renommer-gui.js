@@ -13,10 +13,11 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { exec } = require('child_process');
-const { traiter, genererXlsx } = require('./renommer-core');
+const { traiter, genererXlsx, listerFichiers, genererXlsxListe, nomFichierXlsx } = require('./renommer-core');
 
 const PORT = 3210;
 let dernier = null; // dernier résultat (aperçu ou application), utilisé pour l'export Excel
+let derniereListe = null; // dernière liste de fichiers affichée, utilisée pour son export Excel
 
 function listerDossiers(p) {
   const dossier = path.resolve(p || os.homedir());
@@ -99,20 +100,33 @@ Renommeur de fichiers
       <label class="t">Si le nom cible existe déjà et que les tailles sont différentes</label>
       <label><input type="radio" name="garder" value="petit" checked> Supprimer le plus gros, garder le plus petit</label>
       <label><input type="radio" name="garder" value="gros"> Garder le plus gros, supprimer le plus petit</label>
-      <div class="info">À taille égale, le fichier le plus ancien est supprimé et le plus récent est conservé (date de modification).</div>
+      <div class="info">A taille égale, le fichier le plus ancien est supprimé et le plus récent est conservé (date de modification).</div>
     </div>
 
     <div class="actions">
       <button class="primary" id="btnPreview" type="button">Aperçu</button>
+      <button id="btnList" type="button">Lister les fichiers du dossier</button>
       <button class="danger" id="btnApply" type="button" disabled>Appliquer les changements</button>
     </div>
     <div id="err" class="msg-err"></div>
   </div>
 
+  <div class="card" id="listCard" style="display:none">
+    <div class="head">
+      <div class="resume" id="listResume"></div>
+      <button id="btnListXlsx" type="button">Exporter la liste en Excel (.xlsx)</button>
+    </div>
+    <table>
+      <thead><tr><th>Nom</th><th style="width:130px">Taille (o)</th><th style="width:170px">Date de modification</th></tr></thead>
+      <tbody id="listRows"></tbody>
+    </table>
+    <div class="small" id="listNote" style="margin-top:10px">Les sous-dossiers ne sont pas listés.</div>
+  </div>
+
   <div class="card" id="resultCard" style="display:none">
     <div class="head">
       <div class="resume" id="resume"></div>
-      <button id="btnXlsx" type="button">Exporter la liste en Excel (.xlsx)</button>
+      <button id="btnXlsx" type="button">Exporter le résultat en Excel (.xlsx)</button>
     </div>
     <table>
       <thead><tr><th style="width:110px">Action</th><th>Fichier</th><th style="width:90px">Taille (o)</th><th>Nouveau nom</th><th>Détail</th></tr></thead>
@@ -196,8 +210,26 @@ async function lancer(apply) {
   } catch (e) { $('err').textContent = e.message; }
 }
 
+async function lister() {
+  $('err').textContent = '';
+  const folder = $('folder').value.trim();
+  if (!folder) { $('err').textContent = 'Indiquez un dossier.'; return; }
+  try {
+    const res = await api('/api/files', { folder });
+    const total = res.fichiers.reduce((t, f) => t + f.taille, 0);
+    $('listCard').style.display = 'block';
+    $('listResume').textContent = res.fichiers.length + ' fichier(s) — ' + total.toLocaleString('fr-FR') + ' octets au total';
+    $('listRows').innerHTML = res.fichiers.map((f) =>
+      '<tr><td>' + esc(f.nom) + '</td><td class="num">' + f.taille.toLocaleString('fr-FR') + '</td><td>' + esc(f.modifie) + '</td></tr>').join('') ||
+      '<tr><td colspan="3">Aucun fichier dans ce dossier.</td></tr>';
+    $('btnListXlsx').disabled = res.fichiers.length === 0;
+  } catch (e) { $('err').textContent = e.message; }
+}
+
 $('btnBrowse').onclick = () => ouvrirNavigateur($('folder').value.trim());
 $('btnPreview').onclick = () => lancer(false);
+$('btnList').onclick = lister;
+$('btnListXlsx').onclick = () => { window.location = '/api/files.xlsx'; };
 $('btnApply').onclick = () => {
   const msg = garder() === 'gros'
     ? 'Appliquer les changements ? En cas de doublon, le fichier le plus PETIT sera supprimé (irréversible).'
@@ -225,10 +257,10 @@ function json(res, code, obj) {
   res.end(JSON.stringify(obj));
 }
 
-function dateDuJour() {
-  const d = new Date();
-  const p = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+// En-tête de téléchargement, compatible avec les noms accentués
+function contentDisposition(nom) {
+  const ascii = nom.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '_').replace(/"/g, '_');
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(nom)}`;
 }
 
 const server = http.createServer(async (req, res) => {
@@ -254,12 +286,31 @@ const server = http.createServer(async (req, res) => {
       dernier = { folder: path.resolve(folder), apply: !!apply, lignes: resultat.lignes };
       return json(res, 200, resultat);
     }
+    if (req.method === 'POST' && url.pathname === '/api/files') {
+      const { folder } = await lireCorps(req);
+      if (!folder || !fs.existsSync(folder) || !fs.statSync(folder).isDirectory()) {
+        return json(res, 400, { error: 'Dossier introuvable : ' + folder });
+      }
+      const fichiers = listerFichiers(folder);
+      derniereListe = { folder: path.resolve(folder), fichiers };
+      return json(res, 200, { fichiers });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/files.xlsx') {
+      if (!derniereListe) return json(res, 400, { error: 'Affichez d\'abord la liste des fichiers.' });
+      const buf = genererXlsxListe(derniereListe.fichiers, { folder: derniereListe.folder });
+      res.writeHead(200, {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': contentDisposition(nomFichierXlsx('fichiers-du-dossier', derniereListe.folder)),
+        'Content-Length': buf.length,
+      });
+      return res.end(buf);
+    }
     if (req.method === 'GET' && url.pathname === '/api/export.xlsx') {
       if (!dernier) return json(res, 400, { error: 'Lancez d\'abord un aperçu.' });
       const buf = genererXlsx(dernier.lignes, { apply: dernier.apply, folder: dernier.folder });
       res.writeHead(200, {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="liste-fichiers-${dateDuJour()}.xlsx"`,
+        'Content-Disposition': contentDisposition(nomFichierXlsx('resultat', dernier.folder)),
         'Content-Length': buf.length,
       });
       return res.end(buf);

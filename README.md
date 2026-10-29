@@ -12,7 +12,7 @@ Aucune dépendance à installer.
 
 ## Prérequis
 
-- [Node.js](https://nodejs.org) (version 18 ou plus récent recommandé)
+- [Node.js](https://nodejs.org) (version 14 ou supérieure ; 18 ou plus récent recommandé)
 
 Pour vérifier l'installation : `node --version`
 
@@ -55,7 +55,9 @@ Une page s'ouvre dans le navigateur (`http://localhost:3210`). Si ce n'est pas l
 3. Choisissez le mode si le nom existe déjà : supprimer le plus gros (défaut) ou garder le plus gros.
 4. Cliquez sur **Aperçu** pour voir ce qui sera fait, sans rien modifier.
 5. Cliquez sur **Appliquer les changements** et confirmez.
-6. Cliquez sur **Exporter la liste en Excel (.xlsx)** pour télécharger la liste (voir plus bas).
+6. Cliquez sur **Exporter le résultat en Excel (.xlsx)** pour télécharger le résultat du traitement (voir plus bas).
+
+Le bouton **Lister les fichiers du dossier** affiche, sans rien modifier, les fichiers présents dans le dossier (nom, taille, date de modification) avec leur nombre et leur taille totale. Le bouton **Exporter la liste en Excel (.xlsx)** de cette liste la télécharge. Les sous-dossiers ne sont pas listés.
 
 Pour arrêter l'outil : `Ctrl+C` dans le terminal.
 
@@ -68,14 +70,17 @@ node renommer.js <dossier>                                    # simulation, rien
 node renommer.js <dossier> --apply                            # applique les changements
 node renommer.js <dossier> --prefix=F-,D-,T-,spec- --apply    # avec une liste de préfixes
 node renommer.js <dossier> --garder=gros --apply              # garder le plus gros en cas de doublon
-node renommer.js <dossier> --xlsx=liste.xlsx                  # exporter la liste en Excel
+node renommer.js <dossier> --xlsx=liste.xlsx                  # exporter le résultat du traitement en Excel
+node renommer.js <dossier> --lister                           # lister les fichiers du dossier (sans rien modifier)
+node renommer.js <dossier> --lister --xlsx=fichiers.xlsx      # ... et exporter cette liste en Excel
 ```
 
 | Option | Rôle |
 |---|---|
 | `--prefix=F-,D-,T-,spec-` | Préfixes à enlever (séparés par des virgules). Sans cette option, aucun préfixe n'est enlevé. |
 | `--garder=petit` ou `--garder=gros` | En cas de doublon : `petit` (défaut) supprime le plus gros, `gros` supprime le plus petit. |
-| `--xlsx=liste.xlsx` | Écrit la liste des fichiers dans un fichier Excel. |
+| `--xlsx=liste.xlsx` | Écrit la liste dans un fichier Excel (le résultat du traitement, ou la liste des fichiers avec `--lister`). |
+| `--lister` | Affiche les fichiers du dossier (date, taille, nom) sans rien renommer ni supprimer. |
 | `--apply` | Exécute réellement les changements. Sans cette option, c'est un simple aperçu. |
 
 ### Depuis VS Code
@@ -85,6 +90,19 @@ node renommer.js <dossier> --xlsx=liste.xlsx                  # exporter la list
 3. Lancer `node renommer-gui.js` (ou `node renommer.js ...`).
 
 ## Export Excel
+
+Deux exports sont possibles. Le nom du fichier contient le nom du dossier et la date :
+
+- liste des fichiers : `fichiers-du-dossier-<dossier>-AAAA-MM-JJ.xlsx`
+- résultat du traitement : `resultat-<dossier>-AAAA-MM-JJ.xlsx`
+
+En ligne de commande, `--xlsx` seul (sans nom) génère automatiquement ce nom ; `--xlsx=mon-nom.xlsx` permet d'en choisir un.
+
+### Liste des fichiers du dossier
+
+Bouton « Lister les fichiers du dossier » puis « Exporter la liste en Excel », ou `--lister --xlsx=...` en ligne de commande. Colonnes : Nom, Extension, Taille (octets), Date de modification, Dossier.
+
+### Résultat du traitement
 
 Le fichier `.xlsx` contient **tous les fichiers du dossier** (y compris les inchangés), avec les colonnes :
 

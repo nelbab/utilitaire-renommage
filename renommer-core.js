@@ -226,11 +226,8 @@ function xml(s) {
 
 function colonne(i) { return String.fromCharCode(65 + i); } // A..F
 
-/** Génère un fichier .xlsx (Buffer) avec la liste des fichiers. */
-function genererXlsx(lignes, { apply = false, folder = '' } = {}) {
-  const entetes = ['Fichier d\'origine', 'Taille (octets)', 'Nouveau nom', 'Action', 'Détail', 'Dossier'];
-  const largeurs = [42, 16, 42, 14, 70, 50];
-
+/** Construit un fichier .xlsx (Buffer) à partir d'en-têtes, de largeurs de colonnes et de lignes de valeurs. */
+function construireXlsx(entetes, largeurs, lignes) {
   const cellule = (c, r, v, style) => {
     const ref = colonne(c) + r;
     if (typeof v === 'number') return `<c r="${ref}"${style ? ` s="${style}"` : ''}><v>${v}</v></c>`;
@@ -238,9 +235,8 @@ function genererXlsx(lignes, { apply = false, folder = '' } = {}) {
   };
 
   let rowsXml = `<row r="1">${entetes.map((h, c) => cellule(c, 1, h, 1)).join('')}</row>`;
-  lignes.forEach((l, i) => {
+  lignes.forEach((vals, i) => {
     const r = i + 2;
-    const vals = [l.source, l.taille, l.cible || '', libelle(l.type, apply), l.detail || '', folder];
     rowsXml += `<row r="${r}">${vals.map((v, c) => cellule(c, r, v)).join('')}</row>`;
   });
 
@@ -251,7 +247,7 @@ function genererXlsx(lignes, { apply = false, folder = '' } = {}) {
     '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' +
     `<cols>${largeurs.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols>` +
     `<sheetData>${rowsXml}</sheetData>` +
-    `<autoFilter ref="A1:F${derniere}"/>` +
+    `<autoFilter ref="A1:${colonne(entetes.length - 1)}${derniere}"/>` +
     '</worksheet>';
 
   const styles =
@@ -297,4 +293,43 @@ function genererXlsx(lignes, { apply = false, folder = '' } = {}) {
   return zip(entries);
 }
 
-module.exports = { nouveauNom, traiter, libelle, genererXlsx };
+/** Nom de fichier Excel contenant le nom du dossier, ex. "liste-fichiers-Factures-2026-10-29.xlsx". */
+function nomFichierXlsx(prefixe, folder) {
+  const nomDossier = path.basename(path.resolve(folder)).replace(/[\\/:*?"<>|]/g, '_').trim() || 'racine';
+  const d = new Date();
+  const p2 = (n) => String(n).padStart(2, '0');
+  return `${prefixe}-${nomDossier}-${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}.xlsx`;
+}
+
+/** Export du résultat d'un traitement (aperçu ou application). */
+function genererXlsx(lignes, { apply = false, folder = '' } = {}) {
+  return construireXlsx(
+    ['Fichier d\'origine', 'Taille (octets)', 'Nouveau nom', 'Action', 'Détail', 'Dossier'],
+    [42, 16, 42, 14, 70, 50],
+    lignes.map((l) => [l.source, l.taille, l.cible || '', libelle(l.type, apply), l.detail || '', folder])
+  );
+}
+
+/** Liste des fichiers présents dans un dossier (sans sous-dossiers), triés par nom. */
+function listerFichiers(folder) {
+  const p2 = (n) => String(n).padStart(2, '0');
+  const fmt = (d) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+  return fs.readdirSync(folder, { withFileTypes: true })
+    .filter((e) => e.isFile())
+    .map((e) => {
+      const st = fs.statSync(path.join(folder, e.name));
+      return { nom: e.name, extension: path.extname(e.name).replace('.', '').toLowerCase(), taille: st.size, modifie: fmt(st.mtime) };
+    })
+    .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+}
+
+/** Export de la liste des fichiers d'un dossier. */
+function genererXlsxListe(fichiers, { folder = '' } = {}) {
+  return construireXlsx(
+    ['Nom', 'Extension', 'Taille (octets)', 'Date de modification', 'Dossier'],
+    [50, 12, 16, 22, 50],
+    fichiers.map((f) => [f.nom, f.extension, f.taille, f.modifie, folder])
+  );
+}
+
+module.exports = { nouveauNom, traiter, libelle, genererXlsx, listerFichiers, genererXlsxListe, nomFichierXlsx };

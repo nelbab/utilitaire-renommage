@@ -9,6 +9,7 @@
  *   node renommer.js <dossier> --prefix=F-,D-,T-,spec- --apply
  *   node renommer.js <dossier> --garder=gros --apply
  *   node renommer.js <dossier> --xlsx=liste.xlsx                -> exporte la liste des fichiers en Excel
+ *   node renommer.js <dossier> --lister [--xlsx=liste.xlsx]     -> liste les fichiers du dossier (sans rien renommer)
  *
  * Options :
  *   --prefix=F-,D-,spec-  préfixes à enlever (séparés par des virgules). Sans option : aucun préfixe enlevé.
@@ -17,17 +18,20 @@
  *                           gros           = garde le plus gros (supprime le plus petit)
  *                         à taille égale : supprime le plus ancien, garde le plus récent
  *   --xlsx=fichier.xlsx   écrit la liste de tous les fichiers (et des actions) dans un fichier Excel
+ *   --lister              affiche la liste des fichiers du dossier (nom, taille, date) sans rien modifier ;
+ *                         avec --xlsx, exporte cette liste en Excel
  *   --apply               exécute les renommages / suppressions (sinon simple aperçu)
  */
 
 const fs = require('fs');
 const path = require('path');
-const { traiter, libelle, genererXlsx } = require('./renommer-core');
+const { traiter, libelle, genererXlsx, listerFichiers, genererXlsxListe } = require('./renommer-core');
 
 const args = process.argv.slice(2);
 const opt = (nom) => { const a = args.find((x) => x.startsWith(`--${nom}=`)); return a ? a.slice(nom.length + 3) : null; };
 
 const apply = args.includes('--apply');
+const lister = args.includes('--lister');
 const prefixArg = opt('prefix');
 const prefixes = prefixArg ? prefixArg.split(',').map((p) => p.trim()).filter(Boolean) : null;
 const garder = opt('garder') || 'petit';
@@ -45,6 +49,17 @@ if (!['petit', 'gros'].includes(garder)) {
 if (!fs.existsSync(folder) || !fs.statSync(folder).isDirectory()) {
   console.error(`Dossier introuvable : ${folder}`);
   process.exit(1);
+}
+
+if (lister) {
+  const fichiers = listerFichiers(folder);
+  for (const f of fichiers) console.log(`${f.modifie}  ${String(f.taille).padStart(12)} o  ${f.nom}`);
+  console.log(`\n${fichiers.length} fichier(s).`);
+  if (xlsx) {
+    fs.writeFileSync(xlsx, genererXlsxListe(fichiers, { folder: path.resolve(folder) }));
+    console.log(`Liste exportée : ${path.resolve(xlsx)}`);
+  }
+  process.exit(0);
 }
 
 console.log(apply ? '=== MODE APPLICATION ===' : '=== SIMULATION (ajoutez --apply pour exécuter) ===');
