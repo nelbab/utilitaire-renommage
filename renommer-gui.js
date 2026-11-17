@@ -93,7 +93,7 @@ Renommeur de fichiers
     <div style="margin-top:14px">
       <label class="t" for="prefix">Préfixes à enlever (séparés par des virgules)</label>
       <input type="text" id="prefix" placeholder="F-, D-, T-, spec-">
-      <div class="info">Laisser vide = aucun préfixe enlevé (seuls le « _ », les accents et les apostrophes sont traités).</div>
+      <div class="info">Laisser vide = aucun préfixe enlevé (Supprime tout ce qui suit le premier « _ », les accents et les apostrophes, les points de suspension, ainsi que le nommage des saisons et des épisodes sont traités).</div>
     </div>
 
     <div style="margin-top:14px" class="radios">
