@@ -20,6 +20,14 @@ function nouveauNom(nom, prefixes) {
     if (p) base = base.slice(p.length);
   }
 
+  // 1 bis. saisons / épisodes -> "saison N ep N" (le "- " qui précède est supprimé)
+  //   "- Saison 1 Épisode 5", "- Saison 1 Episode 5", "- S01E05", "S01E05" -> "saison 1 ep 5"
+  base = base.normalize('NFC')
+    .replace(/(^|\s)(?:-\s*)?saison\s*(\d+)\s*[eé]pisode\s*(\d+)/gi,
+      (m, avant, s, e) => `${avant}saison ${parseInt(s, 10)} ep ${parseInt(e, 10)}`)
+    .replace(/(^|\s)(?:-\s*)?S(\d{1,2})E(\d{1,3})(?!\d)/gi,
+      (m, avant, s, e) => `${avant}saison ${parseInt(s, 10)} ep ${parseInt(e, 10)}`);
+
   // 2. tout ce qu'il y a après le 1er "_"
   const idx = base.indexOf('_');
   if (idx !== -1) base = base.slice(0, idx);

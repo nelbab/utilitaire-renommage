@@ -20,13 +20,12 @@ Pour vérifier l'installation : `node --version`
 
 Pour chaque fichier du dossier choisi (l'extension est toujours conservée) :
 
-1. **Supprime un préfixe** (`F-`, `D-`, `T-`, `spec-`…), si une liste de préfixes est fournie.
-   N'importe quel texte convient comme préfixe. Si plusieurs correspondent, le plus long est retenu.
-   Sans liste de préfixes, cette étape est ignorée : les autres règles s'appliquent quand même (`Café_v2.txt` devient `Cafe.txt`).
-2. **Supprime tout ce qui suit le premier `_`** (le `_` est supprimé aussi).
-3. **Retire les accents** : `é è ê ë à â ù û ô î ï` deviennent `e e e e a a u u o i i`, `ç` devient `c`, `œ` devient `oe`, `æ` devient `ae`.
-4. **Remplace les apostrophes par un espace** (`'` et `’`).
-5. **Vérifie si le nom cible existe déjà** avant de renommer. Si oui, selon le mode choisi :
+1. **Supprime un préfixe** (F-, D-, T-, spec-…), si une liste de préfixes est fournie. N'importe quel texte convient comme préfixe. Si plusieurs correspondent, le plus long est retenu. Sans liste de préfixes, cette étape est ignorée : les autres règles s'appliquent quand même (Café_v2.txt devient Cafe.txt).
+2. **Met en forme les saisons et épisodes** : - Saison 1 Épisode 5, - Saison 1 Episode 5, - S01E05 et S01E05 deviennent saison 1 ep 5 (le -  qui précède est supprimé, les zéros inutiles aussi : S01E15 donne saison 1 ep 15). Cette étape a lieu avant la coupure au _.
+3. **Supprime tout ce qui suit le premier `_`** (le `_` est supprimé aussi).
+4. **Retire les accents** : `é è ê ë à â ù û ô î ï` deviennent `e e e e a a u u o i i`, `ç` devient `c`, `œ` devient `oe`, `æ` devient `ae`.
+5. **Remplace les apostrophes par un espace** (`'` et `’`).
+6. **Vérifie si le nom cible existe déjà** avant de renommer. Si oui, selon le mode choisi :
    - **Supprimer le plus gros** (mode par défaut) : le fichier le plus gros est supprimé, le plus petit est conservé sous le nom cible.
    - **Garder le plus gros** : le fichier le plus petit est supprimé, le plus gros est conservé sous le nom cible.
    - Dans les deux cas, à **taille égale**, le fichier le **plus ancien** (date de modification) est supprimé et le plus récent est conservé. Si la date est aussi identique, rien n'est supprimé et le conflit est signalé.
@@ -39,6 +38,10 @@ Pour chaque fichier du dossier choisi (l'extension est toujours conservée) :
 | `F-Café_v2.txt` (préfixe `F-`) | `Cafe.txt` |
 | `spec-Rapport_v3.doc` (préfixe `spec-`) | `Rapport.doc` |
 | `D-L'été_old.pdf` (préfixe `D-`) | `L ete.pdf` |
+| `Serie - Saison 1 Épisode 5.mkv` | `Serie saison 1 ep 5.mkv` |
+| `Serie - Saison 1 Episode 5.mkv` | `Serie saison 1 ep 5.mkv` |
+| `Serie - S01E05.mkv` | `Serie saison 1 ep 5.mkv` |
+| `Serie S01E15.mkv` | `Serie saison 1 ep 15.mkv` |
 
 ## Utilisation
 
