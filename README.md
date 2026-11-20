@@ -10,6 +10,11 @@ Petit utilitaire Node.js pour nettoyer les noms de fichiers d'un dossier, avec u
 
 Aucune dépendance à installer.
 
+## Documentation technique
+
+Pour découvrir l'architecture du projet, son fonctionnement interne et les
+principales techniques utilisées, consulter la [documentation de conception](conception.md).
+
 ## Prérequis
 
 - [Node.js](https://nodejs.org) (version 14 ou supérieure ; 18 ou plus récent recommandé)
